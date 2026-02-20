@@ -1,0 +1,706 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fluair — Tabela de Preço</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚚</text></svg>">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#f2f2f7;--surface:#ffffff;--surface2:#f8f8fc;
+  --border:#e5e5ea;--border-dark:#c7c7cc;
+  --accent:#007aff;--accent-light:#e8f2ff;
+  --red:#ff3b30;--green:#34c759;--orange:#ff9500;
+  --text:#1c1c1e;--text2:#6e6e73;--text3:#aeaeb2;
+  --min-col:#ff6b00;--min-bg:#fff4ec;
+  --nor-col:#007aff;--nor-bg:#e8f2ff;
+  --sw:320px;--hh:56px;
+  --r:12px;--rs:8px;
+  --sh:0 1px 3px rgba(0,0,0,.08),0 1px 2px rgba(0,0,0,.04);
+  --shm:0 4px 12px rgba(0,0,0,.10),0 2px 4px rgba(0,0,0,.06)
+}
+body{font-family:'Inter',-apple-system,BlinkMacSystemFont,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden;-webkit-font-smoothing:antialiased}
+
+/* HEADER */
+.hdr{position:fixed;top:0;left:0;right:0;height:var(--hh);background:rgba(255,255,255,.88);backdrop-filter:blur(20px) saturate(180%);-webkit-backdrop-filter:blur(20px) saturate(180%);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 16px;gap:12px;z-index:100}
+.mBtn{width:36px;height:36px;border:none;background:none;cursor:pointer;border-radius:8px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;padding:8px;transition:background .15s;flex-shrink:0}
+.mBtn:hover{background:var(--bg)}
+.mBtn span{display:block;width:18px;height:2px;background:var(--text);border-radius:2px;transition:all .25s;transform-origin:center}
+.open .mBtn span:nth-child(1){transform:translateY(7px) rotate(45deg)}
+.open .mBtn span:nth-child(2){opacity:0;transform:scaleX(0)}
+.open .mBtn span:nth-child(3){transform:translateY(-7px) rotate(-45deg)}
+.hLogo{display:flex;align-items:center;gap:10px}
+.lIcon{width:30px;height:30px;background:var(--accent);border-radius:7px;display:flex;align-items:center;justify-content:center}
+.lIcon svg{width:16px;height:16px;fill:white}
+.hTitle{font-size:16px;font-weight:600;letter-spacing:-.2px}
+.hSub{font-size:12px;color:var(--text2);display:none}
+@media(min-width:600px){.hSub{display:block}}
+.hActs{margin-left:auto;display:flex;align-items:center;gap:8px}
+.hStat{display:flex;align-items:center;gap:6px;padding:6px 12px;border-radius:20px;background:var(--bg);font-size:12px;font-weight:500;color:var(--text2)}
+.sDot{width:7px;height:7px;border-radius:50%;background:var(--text3);transition:background .3s}
+.sDot.on{background:var(--green);box-shadow:0 0 0 3px rgba(52,199,89,.2)}
+
+/* OVERLAY */
+.ovl{display:none;position:fixed;inset:0;background:rgba(0,0,0,.3);z-index:90;backdrop-filter:blur(2px);animation:fi .2s ease}
+.open .ovl{display:block}
+@keyframes fi{from{opacity:0}to{opacity:1}}
+
+/* LAYOUT */
+.lay{display:flex;min-height:100vh;padding-top:var(--hh)}
+
+/* SIDEBAR */
+.sb{position:fixed;top:var(--hh);bottom:0;left:0;width:var(--sw);background:var(--surface);border-right:1px solid var(--border);overflow-y:auto;z-index:95;transform:translateX(calc(-1 * var(--sw)));transition:transform .3s cubic-bezier(.25,.46,.45,.94);display:flex;flex-direction:column;padding-bottom:24px}
+.open .sb{transform:translateX(0)}
+@media(min-width:900px){
+  .sb{transform:translateX(0)!important;position:sticky;top:var(--hh);height:calc(100vh - var(--hh));flex-shrink:0}
+  .ovl{display:none!important}
+}
+
+.sbs{padding:20px 16px 0}
+.sbs+.sbs{border-top:1px solid var(--border);margin-top:16px;padding-top:20px}
+.stt{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.6px;color:var(--text2);margin-bottom:12px;padding-left:4px}
+
+/* UPLOAD */
+.upCard{border:1.5px dashed var(--border-dark);border-radius:var(--r);padding:18px 16px;text-align:center;cursor:pointer;transition:all .2s;position:relative;background:var(--surface2)}
+.upCard:hover{border-color:var(--accent);background:var(--accent-light)}
+.upCard.ok{border-style:solid;border-color:var(--green);background:#f0fdf4}
+.upCard input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+.upIco{font-size:28px;margin-bottom:8px;display:block}
+.upCard.ok .upIco{filter:hue-rotate(100deg) saturate(1.2)}
+.upName{font-size:13px;font-weight:600;color:var(--text);margin-bottom:3px}
+.upHint{font-size:11px;color:var(--text2)}
+.upFile{font-size:11px;color:var(--green);margin-top:6px;display:none;word-break:break-all;line-height:1.4}
+.upCard.ok .upFile{display:block}
+
+/* MATRIX ROWS */
+.mxList{display:flex;flex-direction:column;gap:8px}
+.mxRow{display:flex;align-items:center;gap:10px;padding:12px 14px;border-radius:var(--rs);background:var(--surface2);border:1px solid var(--border);cursor:pointer;position:relative;transition:all .2s}
+.mxRow:hover{border-color:var(--accent);background:var(--accent-light)}
+.mxRow.ok{border-color:var(--green);background:#f0fdf4}
+.mxRow input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer}
+.mxNum{width:26px;height:26px;border-radius:50%;background:var(--border);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:var(--text2);flex-shrink:0;transition:all .2s}
+.mxRow.ok .mxNum{background:var(--green);color:white}
+.mxInfo{flex:1;min-width:0}
+.mxLabel{font-size:12px;font-weight:500;color:var(--text)}
+.mxFname{font-size:10px;color:var(--text2);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mxRow.ok .mxFname{color:var(--green)}
+.mxArrow{color:var(--text3);font-size:14px}
+
+/* CLIENT BUTTONS */
+.cList{display:flex;flex-direction:column;gap:6px}
+.cBtn{display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:var(--rs);border:1.5px solid var(--border);background:var(--surface);cursor:pointer;font-size:13px;font-weight:500;color:var(--text);transition:all .15s;text-align:left}
+.cBtn:hover{border-color:var(--accent);color:var(--accent);background:var(--accent-light)}
+.cBtn.on{border-color:var(--accent);background:var(--accent);color:white}
+.cBadge{width:24px;height:24px;border-radius:6px;background:rgba(255,255,255,.25);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0}
+.cBtn:not(.on) .cBadge{background:var(--bg);color:var(--text2)}
+
+/* PROCESS */
+.pWrap{padding:16px;margin-top:auto;padding-top:20px}
+.pBtn{width:100%;padding:14px;background:var(--accent);color:white;border:none;border-radius:var(--r);font-size:15px;font-weight:600;cursor:pointer;transition:all .15s;display:flex;align-items:center;justify-content:center;gap:8px;letter-spacing:-.2px}
+.pBtn:hover{background:#0066d4;transform:translateY(-1px);box-shadow:var(--shm)}
+.pBtn:active{transform:translateY(0)}
+.pBtn:disabled{background:var(--border-dark);color:var(--text3);cursor:not-allowed;transform:none;box-shadow:none}
+
+/* MAIN */
+.main{flex:1;padding:20px 16px;min-width:0}
+@media(min-width:600px){.main{padding:24px 24px}}
+@media(min-width:900px){.main{padding:28px 32px}}
+
+/* EMPTY */
+.empty{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:550px;gap:12px;text-align:center;color:var(--text2)}
+.eIco{font-size:52px;margin-bottom:4px;opacity:.6}
+.eTitle{font-size:18px;font-weight:600;color:var(--text)}
+.eDesc{font-size:14px;line-height:1.6;max-width:360px}
+
+/* KIT CARD */
+.kitCard{background:var(--surface);border-radius:var(--r);border:1px solid var(--border);padding:16px 20px;display:flex;gap:20px;flex-wrap:wrap;align-items:center;box-shadow:var(--sh);margin-bottom:16px}
+.kf{display:flex;flex-direction:column;gap:3px}
+.kfL{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--text2)}
+.kfV{font-size:14px;font-weight:600;color:var(--text)}
+.kfV.code{color:var(--accent);font-size:16px}
+.cTag{display:inline-flex;align-items:center;padding:3px 10px;border-radius:20px;font-size:12px;font-weight:600;background:var(--accent-light);color:var(--accent)}
+
+/* TOTALS */
+.totGrid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px}
+@media(min-width:700px){.totGrid{grid-template-columns:1fr 1fr 1fr}}
+.tCard{background:var(--surface);border-radius:var(--r);border:1px solid var(--border);padding:16px 18px;box-shadow:var(--sh)}
+.tLabel{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--text2);margin-bottom:6px;display:flex;align-items:center;gap:6px}
+.tLabel::before{content:'';width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.tCard.min .tLabel{color:var(--min-col)}
+.tCard.min .tLabel::before{background:var(--min-col)}
+.tCard.nor .tLabel{color:var(--nor-col)}
+.tCard.nor .tLabel::before{background:var(--nor-col)}
+.tCard.inf .tLabel::before{background:var(--text3)}
+.tVal{font-size:22px;font-weight:700;letter-spacing:-.5px}
+.tCard.min .tVal{color:var(--min-col)}
+.tCard.nor .tVal{color:var(--nor-col)}
+.tSub{font-size:11px;color:var(--text2);margin-top:3px}
+
+/* TABLE CARD */
+.tblCard{background:var(--surface);border-radius:var(--r);border:1px solid var(--border);box-shadow:var(--sh);overflow:hidden}
+.tbar{padding:14px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.tbarT{font-size:14px;font-weight:600;color:var(--text)}
+.tsp{flex:1}
+.pill{padding:6px 14px;border-radius:20px;border:1px solid var(--border);background:var(--surface2);font-size:12px;font-weight:500;color:var(--text2);cursor:pointer;transition:all .15s;white-space:nowrap}
+.pill:hover{border-color:var(--accent);color:var(--accent);background:var(--accent-light)}
+.pill.act{background:var(--orange);border-color:var(--orange);color:white}
+.expBtn{padding:7px 16px;border-radius:8px;border:none;background:var(--accent);font-size:12px;font-weight:600;color:white;cursor:pointer;transition:all .15s;white-space:nowrap}
+.expBtn:hover{background:#0066d4}
+.tScroll{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:13px}
+thead th{padding:10px 14px;text-align:left;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--text2);background:var(--surface2);border-bottom:1px solid var(--border);white-space:nowrap;position:sticky;top:0}
+thead th.r{text-align:right}
+tbody tr{border-bottom:1px solid var(--border);transition:background .1s}
+tbody tr:last-child{border-bottom:none}
+tbody tr:hover{background:#f9f9fb}
+tbody tr.zr{opacity:.4}
+tbody tr.zr.hide{display:none}
+td{padding:11px 14px;vertical-align:middle;color:var(--text)}
+td.cod{font-family:'SF Mono','Fira Code',monospace;font-size:12px;color:var(--accent);white-space:nowrap}
+td.desc{max-width:260px;line-height:1.4}
+td.qty{text-align:right;color:var(--text2);white-space:nowrap}
+td.um{text-align:center;font-size:11px;color:var(--text3);white-space:nowrap}
+td.pm{text-align:right;color:var(--min-col);white-space:nowrap}
+td.tm{text-align:right;color:var(--min-col);font-weight:600;white-space:nowrap}
+td.pn{text-align:right;color:var(--nor-col);white-space:nowrap}
+td.tn{text-align:right;color:var(--nor-col);font-weight:600;white-space:nowrap}
+td.np{color:var(--text3)!important;font-size:11px}
+tfoot tr{border-top:2px solid var(--border);background:var(--surface2)}
+tfoot td{font-weight:700;padding:13px 14px}
+tfoot .tm{background:var(--min-bg)}
+tfoot .tn{background:var(--nor-bg)}
+
+/* TOAST */
+.tst{position:fixed;bottom:24px;right:16px;max-width:340px;padding:12px 18px;background:var(--text);color:white;border-radius:var(--rs);font-size:13px;font-weight:500;z-index:999;box-shadow:var(--shm);opacity:0;transform:translateY(8px);transition:all .25s;pointer-events:none}
+.tst.show{opacity:1;transform:translateY(0)}
+.tst.s{background:var(--green)}
+.tst.e{background:var(--red)}
+.tst.w{background:var(--orange)}
+
+/* SPINNER */
+.spin{width:16px;height:16px;border:2px solid rgba(255,255,255,.3);border-top-color:white;border-radius:50%;animation:sp .6s linear infinite;display:inline-block}
+@keyframes sp{to{transform:rotate(360deg)}}
+
+.fu{animation:fu .3s ease forwards}
+@keyframes fu{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border-dark);border-radius:10px}
+</style>
+</head>
+<body>
+
+<header class="hdr">
+  <button class="mBtn" onclick="tog()" aria-label="Menu">
+    <span></span><span></span><span></span>
+  </button>
+  <div class="hLogo">
+    <img src="images/Logo-fluair-site.fw.png" alt="Fluair" style="height:32px;object-fit:contain">
+  </div>
+  <div class="hActs">
+    <div class="hStat">
+      <div class="sDot" id="sDot"></div>
+      <span id="sTxt">aguardando</span>
+    </div>
+  </div>
+</header>
+
+<div class="ovl" onclick="tog()"></div>
+
+<div class="lay">
+  <aside class="sb" id="sb">
+    <div class="sbs">
+      <div class="stt">1 · Relatório Korp</div>
+      <div class="upCard" id="kZone">
+        <input type="file" accept=".xls,.xlsx" onchange="onKorp(this)">
+        <span class="upIco">📋</span>
+        <div class="upName">Folha de Processo</div>
+        <div class="upHint">.xls ou .xlsx exportado do Korp</div>
+        <div class="upFile" id="kFile"></div>
+      </div>
+    </div>
+
+    <div class="sbs">
+      <div class="stt">2 · Matrizes de Preço</div>
+      <div class="mxList">
+        <div class="mxRow" id="m1r">
+          <input type="file" accept=".xls,.xlsx" onchange="onMatrix(this,1)">
+          <div class="mxNum">1</div>
+          <div class="mxInfo"><div class="mxLabel">Implementador</div><div class="mxFname" id="m1f">toque para importar</div></div>
+          <div class="mxArrow">›</div>
+        </div>
+        <div class="mxRow" id="m2r">
+          <input type="file" accept=".xls,.xlsx" onchange="onMatrix(this,2)">
+          <div class="mxNum">2</div>
+          <div class="mxInfo"><div class="mxLabel">Comércio / Reposição</div><div class="mxFname" id="m2f">toque para importar</div></div>
+          <div class="mxArrow">›</div>
+        </div>
+        <div class="mxRow" id="m3r">
+          <input type="file" accept=".xls,.xlsx" onchange="onMatrix(this,3)">
+          <div class="mxNum">3</div>
+          <div class="mxInfo"><div class="mxLabel">Consumidor Final</div><div class="mxFname" id="m3f">toque para importar</div></div>
+          <div class="mxArrow">›</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="sbs">
+      <div class="stt">3 · Tipo de Cliente</div>
+      <div class="cList">
+        <button class="cBtn on" id="cb1" onclick="setC(1)"><div class="cBadge">1</div>Implementador</button>
+        <button class="cBtn" id="cb2" onclick="setC(2)"><div class="cBadge">2</div>Comércio / Reposição</button>
+        <button class="cBtn" id="cb3" onclick="setC(3)"><div class="cBadge">3</div>Consumidor Final</button>
+      </div>
+    </div>
+
+    <div class="pWrap">
+      <button class="pBtn" id="pBtn" onclick="calc()" disabled>Calcular Preço</button>
+    </div>
+  </aside>
+
+  <main class="main" id="main">
+    <div class="empty">
+      <div class="eIco">📦</div>
+      <div class="eTitle">Pronto para calcular</div>
+      <div class="eDesc">Importe a Folha de Processo do Korp e pelo menos uma Matriz de Preços. Selecione o tipo de cliente e calcule.</div>
+    </div>
+  </main>
+</div>
+
+<div class="tst" id="tst"></div>
+
+<script>
+const S={korp:null,kName:null,mx:{1:null,2:null,3:null},client:1,result:null,hideZ:false};
+const CN={1:'Implementador',2:'Comércio / Reposição',3:'Consumidor Final'};
+
+function tog(){document.body.classList.toggle('open')}
+window.addEventListener('resize',()=>{if(window.innerWidth>=900)document.body.classList.remove('open')});
+
+function readFile(file,cb){
+  const r=new FileReader();
+  r.onload=e=>{
+    try{
+      const d=new Uint8Array(e.target.result);
+      const wb=XLSX.read(d,{type:'array',raw:true});
+      const ws=wb.Sheets[wb.SheetNames[0]];
+      const j=XLSX.utils.sheet_to_json(ws,{header:1,defval:'',raw:true});
+      cb(j,null);
+    }catch(er){cb(null,er.message)}
+  };
+  r.onerror=()=>cb(null,'Falha ao ler');
+  r.readAsArrayBuffer(file);
+}
+
+function onKorp(inp){
+  const f=inp.files[0];if(!f)return;
+  readFile(f,(d,e)=>{
+    if(e){toast('Erro Korp: '+e,'e');return}
+    S.korp=d;S.kName=f.name;
+    document.getElementById('kZone').classList.add('ok');
+    document.getElementById('kFile').textContent='✓ '+f.name;
+    updBtn();toast('Relatório Korp carregado!','s');
+  });
+}
+
+function onMatrix(inp,n){
+  const f=inp.files[0];if(!f)return;
+  readFile(f,(d,e)=>{
+    if(e){toast('Erro Matriz '+n+': '+e,'e');return}
+    S.mx[n]=d;
+    document.getElementById('m'+n+'r').classList.add('ok');
+    document.getElementById('m'+n+'f').textContent='✓ '+f.name;
+    updBtn();toast('Matriz '+n+' carregada!','s');
+  });
+}
+
+function setC(n){
+  S.client=n;
+  [1,2,3].forEach(i=>document.getElementById('cb'+i).classList.toggle('on',i===n));
+}
+
+function updBtn(){
+  document.getElementById('pBtn').disabled=!(S.korp&&(S.mx[1]||S.mx[2]||S.mx[3]));
+}
+
+// ─── PARSE KORP ───
+function parseKorp(raw){
+  let hRow=-1,kitCode='',kitDesc='';
+  let cO=0,cCond=1,cC=2,cD=3,cQ=5,cU=6; // 0-indexed defaults based on nicolas.xlsx structure
+
+  for(let i=0;i<raw.length;i++){
+    const row=raw[i];
+    // Extract kit info from early rows
+    if(i<6){
+      const rs=row.map(v=>String(v||'').replace(/\n/g,' ').trim()).join(' ');
+      const cm=rs.match(/C[oó]d\.?\s*Interno:?\s*(\d+)/i);
+      if(cm&&!kitCode)kitCode=cm[1];
+      const dm=rs.match(/Descri[cç][aã]o:?\s*([^\t]+)/i);
+      if(dm&&!kitDesc)kitDesc=dm[1].trim().replace(/\s+/g,' ').slice(0,100);
+    }
+    // Find header row
+    for(let c=0;c<row.length;c++){
+      const v=String(row[c]||'').replace(/\n/g,'').trim().toLowerCase().replace(/[\s.]/g,'');
+      if(v.includes('códproduto')||v.includes('codproduto')){
+        hRow=i;
+        // Re-detect columns from this header row
+        for(let cc=0;cc<row.length;cc++){
+          const hv=String(row[cc]||'').replace(/\n/g,'').trim().toLowerCase();
+          if(hv.includes('ope'))cO=cc;
+          else if(hv.includes('condic'))cCond=cc;
+          else if((hv.includes('cód')||hv.includes('cod'))&&hv.includes('prod'))cC=cc;
+          else if(hv.includes('desc'))cD=cc;
+          else if(hv.includes('qtde')||hv==='qtde.')cQ=cc;
+          else if(hv==='um'||hv==='um.')cU=cc;
+        }
+        break;
+      }
+    }
+    if(hRow>=0)break;
+  }
+
+  const items=[];
+  const start=hRow>=0?hRow+1:0;
+  for(let i=start;i<raw.length;i++){
+    const row=raw[i];
+    const cod=String(row[cC]||'').replace(/\n/g,'').trim();
+    if(!/^\d{5,7}$/.test(cod))continue;
+    const ope=String(row[cO]||'001').replace(/\n/g,'').trim();
+    const condic=String(row[cCond]||'P').replace(/\n/g,'').trim();
+    const desc=String(row[cD]||'').replace(/\n/g,' ').trim();
+    const qtde=parseFloat(String(row[cQ]||'1').replace(',','.'))||1;
+    const um=String(row[cU]||'UNID').replace(/\n/g,'').trim();
+    items.push({cod,desc,qtde,um,ope,condic});
+  }
+
+  return{items,kitCode,kitDesc};
+}
+
+// ─── PARSE MATRIX ───
+// Estrutura: col0=Cód, col3=Desc, col9=Tab.Diferenciada(MIN), col11=Tab.Normal
+function parseMatrix(raw){
+  let hRow=-1,cCod=0,cMin=9,cNor=11;
+
+  for(let i=0;i<raw.length;i++){
+    const row=raw[i];
+    for(let c=0;c<row.length;c++){
+      const v=String(row[c]||'').replace(/\n/g,'').trim().toLowerCase();
+      if(v.includes('diferenciada')||v.includes('mínima')||v.includes('minima')||v==='tab. dif'){
+        hRow=i;cMin=c;
+        // Find normal col in same row
+        for(let c2=c+1;c2<row.length;c2++){
+          const v2=String(row[c2]||'').replace(/\n/g,'').trim().toLowerCase();
+          if(v2.includes('normal')||v2.includes('padrão')||v2.includes('padrao')){cNor=c2;break}
+        }
+        // Find cod col
+        for(let c2=0;c2<c;c2++){
+          const v2=String(row[c2]||'').replace(/\n/g,'').trim().toLowerCase();
+          if(v2.includes('cód')||v2.includes('cod')){cCod=c2;break}
+        }
+        break;
+      }
+    }
+    if(hRow>=0)break;
+  }
+
+  const map={};
+  const start=hRow>=0?hRow+1:2;
+  for(let i=start;i<raw.length;i++){
+    const row=raw[i];
+    const cod=String(row[cCod]||'').replace(/\n/g,'').trim();
+    if(!/^\d{5,7}$/.test(cod))continue;
+    const min=toN(row[cMin]);
+    const nor=toN(row[cNor]);
+    map[cod]={min,nor};
+  }
+  return map;
+}
+
+function toN(v){
+  if(v===null||v===undefined||v==='')return 0;
+  const n=parseFloat(String(v).replace(/[R$\s]/g,'').replace(',','.'));
+  return isNaN(n)?0:n;
+}
+
+// ─── CALC ───
+function calc(){
+  if(!S.korp){toast('Importe o relatório Korp!','e');return}
+  let mx=S.mx[S.client];
+  if(!mx){
+    const av=[1,2,3].find(n=>S.mx[n]);
+    if(!av){toast('Importe pelo menos uma Matriz!','e');return}
+    toast('Matriz '+S.client+' não importada. Usando Matriz '+av+'.','w');
+    S.client=av;mx=S.mx[av];setC(av);
+  }
+  const btn=document.getElementById('pBtn');
+  btn.disabled=true;
+  btn.innerHTML='<span class="spin"></span> Calculando...';
+
+  setTimeout(()=>{
+    try{
+      const {items,kitCode,kitDesc}=parseKorp(S.korp);
+      const pm=parseMatrix(mx);
+      const enr=items.map(item=>{
+        const e=pm[item.cod];
+        const minP=e?e.min:0;
+        const norP=e?e.nor:0;
+        return{
+          ...item,
+          minP,norP,
+          tMin:minP*item.qtde,
+          tNor:norP*item.qtde,
+          has:e!==undefined&&(minP>0||norP>0)
+        };
+      });
+      S.result={items:enr,kitCode,kitDesc};
+      render();
+    }catch(er){toast('Erro: '+er.message,'e');console.error(er)}
+    btn.disabled=false;
+    btn.innerHTML='Calcular Preços';
+    if(window.innerWidth<900)document.body.classList.remove('open');
+  },80);
+}
+
+// ─── RENDER ───
+function render(){
+  const{items,kitCode,kitDesc}=S.result;
+  const main=document.getElementById('main');
+  const totMin=items.reduce((s,i)=>s+i.tMin,0);
+  const totNor=items.reduce((s,i)=>s+i.tNor,0);
+  const wP=items.filter(i=>i.has).length;
+  const noP=items.length-wP;
+
+  document.getElementById('sDot').className='sDot on';
+  document.getElementById('sTxt').textContent='calculado';
+
+  main.innerHTML=`
+  <div class="fu">
+    <div class="kitCard">
+      ${kitCode?`<div class="kf"><div class="kfL">Código</div><div class="kfV code">${kitCode}</div></div>`:''}
+      ${kitDesc?`<div class="kf" style="flex:1;min-width:160px"><div class="kfL">Descrição</div><div class="kfV" style="font-size:13px">${kitDesc}</div></div>`:''}
+      <div class="kf"><div class="kfL">Cliente</div><div class="kfV"><span class="cTag">${CN[S.client]}</span></div></div>
+      <div class="kf"><div class="kfL">Itens</div><div class="kfV">${items.length} <span style="font-size:12px;color:var(--text2)">(${wP} c/ preço)</span></div></div>
+    </div>
+
+    <div class="totGrid">
+      <div class="tCard min">
+        <div class="tLabel">Tabela Mínima</div>
+        <div class="tVal">${br(totMin)}</div>
+        <div class="tSub">Tab. Diferenciada × Qtde</div>
+      </div>
+      <div class="tCard nor">
+        <div class="tLabel">Tabela Normal</div>
+        <div class="tVal">${br(totNor)}</div>
+        <div class="tSub">Tab. Normal × Qtde</div>
+      </div>
+      <div class="tCard inf" style="grid-column:span 2">
+        <div class="tLabel">Sem preço na matriz</div>
+        <div class="tVal" style="font-size:18px;color:var(--text)">${noP}</div>
+        <div class="tSub">${noP>0?'Aparecem zerados na tabela':'Todos os itens têm preço ✓'}</div>
+      </div>
+    </div>
+
+    <div class="tblCard">
+      <div class="tbar">
+        <div class="tbarT">Composição do Kit</div>
+        <div class="tsp"></div>
+        <button class="pill" id="pillBtn" onclick="togZ()">Ocultar sem preço</button>
+        <button class="expBtn" onclick="exp()">⬇ Exportar Excel</button>
+      </div>
+      <div class="tScroll">
+        <table>
+          <thead>
+            <tr>
+              <th>Código</th>
+              <th>Descrição</th>
+              <th class="r">Qtde</th>
+              <th>UM</th>
+              <th class="r" style="color:var(--min-col)">Preço Mín</th>
+              <th class="r" style="color:var(--min-col)">Total Mín</th>
+              <th class="r" style="color:var(--nor-col)">Preço Normal</th>
+              <th class="r" style="color:var(--nor-col)">Total Normal</th>
+            </tr>
+          </thead>
+          <tbody id="tbody">
+            ${items.map(row).join('')}
+          </tbody>
+          <tfoot>
+            <tr>
+              <td colspan="4" style="color:var(--text2);font-size:11px;text-transform:uppercase;letter-spacing:.5px">Total Geral</td>
+              <td></td>
+              <td class="tm">${br(totMin)}</td>
+              <td></td>
+              <td class="tn">${br(totNor)}</td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+    </div>
+  </div>`;
+
+  // fix info card on 3-col
+  const ic=document.querySelector('.tCard.inf');
+  if(ic&&window.innerWidth>=700)ic.style.gridColumn='';
+
+  applyZ();
+}
+
+function row(item){
+  const zc=item.has?'':'zr';
+  const nc=item.has?'':'np';
+  return`<tr class="${zc}" data-z="${!item.has}">
+    <td class="cod">${item.cod}</td>
+    <td class="desc">${item.desc}</td>
+    <td class="qty">${item.qtde}</td>
+    <td class="um">${item.um}</td>
+    <td class="pm ${nc}">${item.minP>0?br(item.minP):'—'}</td>
+    <td class="tm ${nc}">${item.tMin>0?br(item.tMin):'—'}</td>
+    <td class="pn ${nc}">${item.norP>0?br(item.norP):'—'}</td>
+    <td class="tn ${nc}">${item.tNor>0?br(item.tNor):'—'}</td>
+  </tr>`;
+}
+
+function togZ(){
+  S.hideZ=!S.hideZ;
+  const b=document.getElementById('pillBtn');
+  if(b){b.textContent=S.hideZ?'Mostrar todos':'Ocultar sem preço';b.classList.toggle('act',S.hideZ)}
+  applyZ();
+}
+
+function applyZ(){
+  document.querySelectorAll('tr[data-z="true"]').forEach(r=>r.classList.toggle('hide',S.hideZ));
+}
+
+// ─── EXPORT (HTML-based XLS for proper formatting) ───
+function exp(){
+  if(!S.result){toast('Calcule primeiro!','w');return}
+  const{items,kitCode,kitDesc}=S.result;
+  const cn=CN[S.client];
+  const now=new Date();
+  const ds=now.toLocaleDateString('pt-BR');
+  const ts=now.toLocaleTimeString('pt-BR');
+  const totMin=items.reduce((s,i)=>s+i.tMin,0);
+  const totNor=items.reduce((s,i)=>s+i.tNor,0);
+  const brl2=v=>'R$ '+Number(v||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+  const esc=s=>String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+
+  // Filter items based on hideZ toggle
+  const expItems=S.hideZ?items.filter(i=>i.has):items;
+
+  let dataRows='';
+  expItems.forEach(item=>{
+    dataRows+=`<tr>
+<td class="d">${esc(item.ope||'001')}</td>
+<td class="d">${esc(item.condic||'P')}</td>
+<td class="d">${esc(item.cod)}</td>
+<td class="d dl">${esc(item.desc)}</td>
+<td class="d c">${item.qtde}</td>
+<td class="d c">${item.qtde}</td>
+<td class="d c">${esc(item.um)}</td>
+<td class="d r">${item.tMin>0?brl2(item.tMin):''}</td>
+<td class="d r">${item.tNor>0?brl2(item.tNor):''}</td>
+</tr>\n`;
+  });
+
+  const html=`<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
+<head><meta charset="UTF-8">
+<!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet>
+<x:Name>${esc((kitCode||'Kit').slice(0,31))}</x:Name>
+<x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions>
+</x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]-->
+<style>
+td,th{font-family:Arial,sans-serif;font-size:10pt;vertical-align:middle;padding:3px 6px}
+.tit{font-size:16pt;font-weight:700;text-align:center;height:30px}
+.ks{font-size:13pt;font-weight:700;text-align:center;height:30px}
+.lb{font-size:9pt;font-weight:700}
+.vl{font-size:7pt;}
+.hd{background:#E7E6E6;color:#000;font-weight:700;font-size:9pt;padding:5px 8px;white-space:nowrap}
+.hy{background:#FFFF00;color:#000;font-weight:700;font-size:9pt;padding:5px 8px;white-space:nowrap}
+.hr{background:#FF0000;color:#000;font-weight:700;font-size:9pt;padding:5px 8px;white-space:nowrap}
+.d{font-size:9pt;padding:4px 6px}
+.dl{min-width:200px}
+.c{text-align:center}
+.r{text-align:right;white-space:nowrap}
+.tml{font-size:8pt;text-align:center;white-space:nowrap;background:#FFD966;padding:8px 10px;height:22px}
+.tmv{font-size:10pt;white-space:nowrap;text-align:left;padding:6px 8px;height:22px}
+.tnl{font-size:8pt;text-align:center;white-space:nowrap;background:#F4B183;padding:8px 10px;height:22px}
+.tnv{font-size:10pt;white-space:nowrap;text-align:left;padding:6px 8px;height:22px}
+</style>
+</head><body>
+<table border="0" cellpadding="0" cellspacing="0">
+<col width="50"><col width="60"><col width="90"><col width="350">
+<col width="50"><col width="50"><col width="60"><col width="110"><col width="110">
+<tr>
+<td colspan="4" class="tit">Relatório Folha de Processo</td>
+<td colspan="5" class="ks">Korp Sistema de Gestão</td>
+</tr>
+<tr>
+<td class="lb" colspan="2">Cód. Interno:</td>
+<td class="vl" style="font-size: 8pt; text-align: left;">${esc(kitCode)}</td>
+<td class="vl"  style="font-size: 8pt;">Rev. Processo: 00</td>
+<td class="vl" colspan="3" style="font-size:7pt;">Emissão: ${ds} as ${ts}</td>
+<td class="tml">Tabela Mínima</td>
+<td class="tmv">${brl2(totMin)}</td>
+</tr>
+<tr>
+<td class="lb" colspan="2">Descrição:</td>
+<td class="vl" colspan="2" style="font-size:8pt">${esc(kitDesc)}</td>
+<td class="vl" colspan="3" style="font-size:8pt">Usuário: SAMARA</td>
+<td class="tnl">Tabela Normal</td>
+<td class="tnv">${brl2(totNor)}</td>
+</tr>
+<tr><td colspan="9"></td></tr>
+<tr>
+<th class="hd">Ope.</th>
+<th class="hd">Condic.</th>
+<th class="hd">Cód. Produto</th>
+<th class="hd">Descrição Produto</th>
+<th class="hy">Qtde</th>
+<th class="hr">Qtde.</th>
+<th class="hd">UM</th>
+<th class="hy">Setor</th>
+<th class="hr">Máquina</th>
+</tr>
+${dataRows}</table>
+</body></html>`;
+
+  const blob=new Blob(['\ufeff'+html],{type:'application/vnd.ms-excel'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;
+  a.download=`Preco_${kitCode||'Kit'}_${cn.replace(/[\s\/]/g,'-')}_${ds.replace(/\//g,'-')}.xls`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  toast('Exportado!','s');
+}
+
+function br(v){return'R$ '+Number(v||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})}
+
+function toast(msg,type=''){
+  const el=document.getElementById('tst');
+  el.textContent=msg;el.className='tst show '+(type||'');
+  clearTimeout(window._t);window._t=setTimeout(()=>el.classList.remove('show'),3500);
+}
+
+// Drag drop on korp zone
+const kz=document.getElementById('kZone');
+kz.addEventListener('dragover',e=>{e.preventDefault();kz.style.borderColor='var(--accent)'});
+kz.addEventListener('dragleave',()=>{kz.style.borderColor=''});
+kz.addEventListener('drop',e=>{
+  e.preventDefault();kz.style.borderColor='';
+  const f=e.dataTransfer.files[0];if(!f)return;
+  readFile(f,(d,er)=>{
+    if(er){toast('Erro: '+er,'e');return}
+    S.korp=d;S.kName=f.name;
+    kz.classList.add('ok');
+    document.getElementById('kFile').textContent='✓ '+f.name;
+    updBtn();toast('Relatório Korp carregado!','s');
+  });
+});
+</script>
+</body>
+</html>
